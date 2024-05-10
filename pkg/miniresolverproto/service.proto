@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option go_package = "github.com/je4/miniresolver/v2/pkg/miniresolverproto";
+option java_package = "ch.unibas.ub.miniresolver";
+option java_outer_classname = "MiniResolverProto";
+option java_multiple_files = true;
+option objc_class_prefix = "UBB";
+option csharp_namespace = "Unibas.UB.MiniResolver";
+
+package miniresolverproto;
+
+import "defaultResponse.proto";
+import "addService.proto";
+import "google/protobuf/empty.proto";
+
+
+service MiniResolver {
+  rpc Ping(google.protobuf.Empty) returns (DefaultResponse) {}
+  rpc AddService(AddServiceRequest) returns (DefaultResponse) {}
+}

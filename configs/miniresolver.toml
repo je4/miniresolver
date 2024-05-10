@@ -1,0 +1,4 @@
+localaddr = "localhost:7777"
+
+[tls]
+type = "dev"
