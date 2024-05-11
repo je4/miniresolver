@@ -9,12 +9,36 @@ option csharp_namespace = "Unibas.UB.MiniResolver";
 
 package miniresolverproto;
 
-import "defaultResponse.proto";
-import "addService.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/any.proto";
 
+message ServiceData {
+  string service = 1;
+  string address = 2;
+}
+
+message ServiceResponse {
+  repeated string addr = 1;
+}
+
+enum ResultStatus {
+  Error = 0;
+  OK = 1;
+  Warning = 2;
+  NotFound = 3;
+}
+
+message DefaultResponse {
+  ResultStatus status = 1;
+  string message = 2;
+  optional google.protobuf.Any data = 3;
+}
 
 service MiniResolver {
   rpc Ping(google.protobuf.Empty) returns (DefaultResponse) {}
-  rpc AddService(AddServiceRequest) returns (DefaultResponse) {}
+  rpc AddService(ServiceData) returns (DefaultResponse) {}
+  rpc RemoveService(ServiceData) returns (DefaultResponse) {}
+  rpc ResolveService(google.protobuf.StringValue) returns (google.protobuf.StringValue) {}
+  rpc ResolveServices(google.protobuf.StringValue) returns (ServiceResponse) {}
 }

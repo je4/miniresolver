@@ -5,7 +5,7 @@ go 1.22.2
 require (
 	emperror.dev/errors v0.8.1
 	github.com/BurntSushi/toml v1.3.2
-	github.com/je4/trustutil/v2 v2.0.4
+	github.com/je4/trustutil/v2 v2.0.5
 	github.com/je4/utils/v2 v2.0.33
 )
 
