@@ -7,13 +7,18 @@ import (
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+	"time"
 )
 
 const RESOLVERSCHEMA = "miniresolver"
 
-func NewMiniResolverResolverBuilder(miniResolverclient pb.MiniResolverClient, logger zLogger.ZLogger) resolver.Builder {
+func NewMiniResolverResolverBuilder(miniResolverclient pb.MiniResolverClient, checkTimeout time.Duration, logger zLogger.ZLogger) resolver.Builder {
+	if time.Duration(checkTimeout).Seconds() == 0 {
+		checkTimeout = 10 * time.Minute
+	}
 	return &miniResolverResolverBuilder{
 		miniResolverclient: miniResolverclient,
+		checkTimeout:       checkTimeout,
 		logger:             logger,
 	}
 }
@@ -21,6 +26,7 @@ func NewMiniResolverResolverBuilder(miniResolverclient pb.MiniResolverClient, lo
 type miniResolverResolverBuilder struct {
 	miniResolverclient pb.MiniResolverClient
 	logger             zLogger.ZLogger
+	checkTimeout       time.Duration
 }
 
 func (mrrb *miniResolverResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
@@ -29,8 +35,18 @@ func (mrrb *miniResolverResolverBuilder) Build(target resolver.Target, cc resolv
 		cc:                 cc,
 		miniResolverclient: mrrb.miniResolverclient,
 		logger:             mrrb.logger,
+		done:               make(chan bool),
 	}
-	r.start()
+	go func() {
+		for {
+			r.doIt()
+			select {
+			case <-r.done:
+				return
+			case <-time.After(mrrb.checkTimeout):
+			}
+		}
+	}()
 	return r, nil
 }
 func (*miniResolverResolverBuilder) Scheme() string { return RESOLVERSCHEMA }
@@ -42,9 +58,10 @@ type miniResolverResolver struct {
 	cc                 resolver.ClientConn
 	miniResolverclient pb.MiniResolverClient
 	logger             zLogger.ZLogger
+	done               chan bool
 }
 
-func (r *miniResolverResolver) start() {
+func (r *miniResolverResolver) doIt() {
 	addr := r.target.Endpoint()
 	r.logger.Debug().Msgf("start resolver for %s", addr)
 	resp, err := r.miniResolverclient.ResolveServices(context.Background(), &wrapperspb.StringValue{Value: addr})
@@ -62,5 +79,11 @@ func (r *miniResolverResolver) start() {
 	}
 	r.cc.UpdateState(resolver.State{Addresses: addrs})
 }
-func (*miniResolverResolver) ResolveNow(o resolver.ResolveNowOptions) {}
-func (*miniResolverResolver) Close()                                  {}
+func (r *miniResolverResolver) ResolveNow(o resolver.ResolveNowOptions) {
+	r.logger.Debug().Msgf("resolve now")
+
+}
+func (r *miniResolverResolver) Close() {
+	r.logger.Debug().Msgf("close")
+	r.done <- true
+}

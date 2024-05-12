@@ -5,8 +5,10 @@ import (
 	"fmt"
 	pb "github.com/je4/miniresolver/v2/pkg/miniresolverproto"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+	"net"
 	"time"
 )
 
@@ -35,20 +37,61 @@ func (d *MiniResolver) Ping(context.Context, *emptypb.Empty) (*pb.DefaultRespons
 }
 
 func (d *MiniResolver) AddService(ctx context.Context, data *pb.ServiceData) (*pb.DefaultResponse, error) {
-	d.logger.Debug().Msgf("add service '%s' - '%s'", data.Service, data.Address)
-	d.services.addService(data.Service, data.Address)
+	d.logger.Debug().Msgf("add service '%s' - '%s:%d'", data.GetService(), data.GetHost(), data.GetPort())
+
+	var address = fmt.Sprintf("%s:%d", data.GetHost(), data.GetPort())
+	if data.GetHost() == "" {
+		p, ok := peer.FromContext(ctx)
+		if !ok {
+			return nil, fmt.Errorf("cannot get peer")
+		}
+		peerAddr := p.Addr.String()
+		host, _, err := net.SplitHostPort(peerAddr)
+		if err != nil {
+			return nil, fmt.Errorf("cannot split host port of '%s': %v", peerAddr, err)
+		}
+		ip := net.ParseIP(host)
+		if ip.To4() == nil {
+			host = fmt.Sprintf("[%s]", host)
+		}
+		address = fmt.Sprintf("%s:%d", host, data.GetPort())
+	}
+
+	d.services.addService(data.Service, address)
+	d.logger.Debug().Msgf("service '%s' - '%s' added", data.Service, address)
 	return &pb.DefaultResponse{
 		Status:  pb.ResultStatus_OK,
-		Message: fmt.Sprintf("service '%s' - '%s' added", data.Service, data.Address),
+		Message: fmt.Sprintf("service '%s' - '%s' added", data.Service, address),
 	}, nil
 }
 
 func (d *MiniResolver) RemoveService(ctx context.Context, data *pb.ServiceData) (*pb.DefaultResponse, error) {
-	d.logger.Debug().Msgf("remove service '%s' - '%s'", data.Service, data.Address)
-	d.services.removeService(data.Service, data.Address)
+	d.logger.Debug().Msgf("remove service '%s' - '%s:%d'", data.Service, data.GetHost(), data.GetPort())
+
+	var address = fmt.Sprintf("%s:%d", data.GetHost(), data.GetPort())
+	if data.GetHost() == "" {
+		p, ok := peer.FromContext(ctx)
+		if !ok {
+			return nil, fmt.Errorf("cannot get peer")
+		}
+		peerAddr := p.Addr.String()
+		host, _, err := net.SplitHostPort(peerAddr)
+		if err != nil {
+			return nil, fmt.Errorf("cannot split host port of '%s': %v", peerAddr, err)
+		}
+		ip := net.ParseIP(host)
+		if ip.To4() == nil {
+			host = fmt.Sprintf("[%s]", host)
+		}
+		address = fmt.Sprintf("%s:%d", host, data.GetPort())
+	}
+	d.services.removeService(data.Service, address)
+	d.logger.Debug().Msgf("service '%s' - '%s' removed", data.Service, address)
+	waitSeconds := int64((d.serviceExpiration.Seconds() * 2.0) / 3.0)
 	return &pb.DefaultResponse{
-		Status:  pb.ResultStatus_OK,
-		Message: fmt.Sprintf("service '%s' - '%s' removed", data.Service, data.Address),
+		Status:      pb.ResultStatus_OK,
+		Message:     fmt.Sprintf("service '%s' - '%s' removed", data.Service, address),
+		WaitSeconds: &waitSeconds,
 	}, nil
 }
 
