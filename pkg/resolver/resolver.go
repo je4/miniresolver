@@ -80,10 +80,9 @@ func (r *miniResolverResolver) doIt() {
 	r.cc.UpdateState(resolver.State{Addresses: addrs})
 }
 func (r *miniResolverResolver) ResolveNow(o resolver.ResolveNowOptions) {
-	r.logger.Debug().Msgf("resolve now")
-
+	//r.logger.Debug().Msgf("resolve now")
 }
 func (r *miniResolverResolver) Close() {
-	r.logger.Debug().Msgf("close")
+	r.logger.Debug().Msgf("close %s", r.target.Endpoint())
 	r.done <- true
 }
