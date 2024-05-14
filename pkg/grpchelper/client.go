@@ -8,6 +8,6 @@ import (
 	"time"
 )
 
-func RegisterResolver(miniresolverClient pb.MiniResolverClient, checkTimeout time.Duration, logger zLogger.ZLogger) {
-	resolver.Register(miniresolver.NewMiniResolverResolverBuilder(miniresolverClient, checkTimeout, logger))
+func RegisterResolver(miniresolverClient pb.MiniResolverClient, checkTimeout, notFoundTimeout time.Duration, logger zLogger.ZLogger) {
+	resolver.Register(miniresolver.NewMiniResolverResolverBuilder(miniresolverClient, checkTimeout, notFoundTimeout, logger))
 }
