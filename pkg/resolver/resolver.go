@@ -87,13 +87,16 @@ func (r *miniResolverResolver) doIt() (timeout time.Duration) {
 	for i, s := range resp.Addr {
 		addrs[i] = resolver.Address{Addr: s}
 	}
-	r.cc.UpdateState(resolver.State{Addresses: addrs})
+	if err := r.cc.UpdateState(resolver.State{Addresses: addrs}); err != nil {
+		r.logger.Error().Err(err).Msgf("cannot update state for %s", addr)
+		return
+	}
 	if len(resp.Addr) > 0 {
 		timeout = r.checkTimeout
 	}
 	return
 }
-func (r *miniResolverResolver) ResolveNow(o resolver.ResolveNowOptions) {
+func (r *miniResolverResolver) ResolveNow(resolver.ResolveNowOptions) {
 	//r.logger.Debug().Msgf("resolve now")
 }
 func (r *miniResolverResolver) Close() {
