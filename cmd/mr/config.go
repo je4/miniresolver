@@ -10,12 +10,13 @@ import (
 )
 
 type MiniResolverConfig struct {
-	LocalAddr         string           `toml:"localaddr"`
-	TLS               loader.TLSConfig `toml:"tls"`
-	LogFile           string           `toml:"logfile"`
-	LogLevel          string           `toml:"loglevel"`
-	ServiceExpiration config.Duration  `toml:"serviceExpiration"`
-	BufferSize        int              `toml:"bufferSize"`
+	LocalAddr          string           `toml:"localaddr"`
+	TLS                loader.TLSConfig `toml:"tls"`
+	LogFile            string           `toml:"logfile"`
+	LogLevel           string           `toml:"loglevel"`
+	ServiceExpiration  config.Duration  `toml:"serviceExpiration"`
+	NotFoundExpiration config.Duration  `toml:"notFoundExpiration"`
+	BufferSize         int              `toml:"bufferSize"`
 }
 
 func LoadMiniResolverConfig(fSys fs.FS, fp string, conf *MiniResolverConfig) error {

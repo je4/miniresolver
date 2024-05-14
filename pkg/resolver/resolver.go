@@ -12,13 +12,17 @@ import (
 
 const RESOLVERSCHEMA = "miniresolver"
 
-func NewMiniResolverResolverBuilder(miniResolverclient pb.MiniResolverClient, checkTimeout time.Duration, logger zLogger.ZLogger) resolver.Builder {
+func NewMiniResolverResolverBuilder(miniResolverclient pb.MiniResolverClient, checkTimeout time.Duration, notFoundTimeout time.Duration, logger zLogger.ZLogger) resolver.Builder {
 	if time.Duration(checkTimeout).Seconds() == 0 {
 		checkTimeout = 10 * time.Minute
+	}
+	if time.Duration(notFoundTimeout).Seconds() == 0 {
+		notFoundTimeout = 10 * time.Second
 	}
 	return &miniResolverResolverBuilder{
 		miniResolverclient: miniResolverclient,
 		checkTimeout:       checkTimeout,
+		notFoundTimeout:    notFoundTimeout,
 		logger:             logger,
 	}
 }
@@ -27,6 +31,7 @@ type miniResolverResolverBuilder struct {
 	miniResolverclient pb.MiniResolverClient
 	logger             zLogger.ZLogger
 	checkTimeout       time.Duration
+	notFoundTimeout    time.Duration
 }
 
 func (mrrb *miniResolverResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
@@ -36,14 +41,16 @@ func (mrrb *miniResolverResolverBuilder) Build(target resolver.Target, cc resolv
 		miniResolverclient: mrrb.miniResolverclient,
 		logger:             mrrb.logger,
 		done:               make(chan bool),
+		checkTimeout:       mrrb.checkTimeout,
+		notFoundTimeout:    mrrb.notFoundTimeout,
 	}
 	go func() {
 		for {
-			r.doIt()
+			timeout := r.doIt()
 			select {
 			case <-r.done:
 				return
-			case <-time.After(mrrb.checkTimeout):
+			case <-time.After(timeout):
 			}
 		}
 	}()
@@ -59,9 +66,12 @@ type miniResolverResolver struct {
 	miniResolverclient pb.MiniResolverClient
 	logger             zLogger.ZLogger
 	done               chan bool
+	checkTimeout       time.Duration
+	notFoundTimeout    time.Duration
 }
 
-func (r *miniResolverResolver) doIt() {
+func (r *miniResolverResolver) doIt() (timeout time.Duration) {
+	timeout = r.notFoundTimeout
 	addr := r.target.Endpoint()
 	r.logger.Debug().Msgf("start resolver for %s", addr)
 	resp, err := r.miniResolverclient.ResolveServices(context.Background(), &wrapperspb.StringValue{Value: addr})
@@ -78,6 +88,10 @@ func (r *miniResolverResolver) doIt() {
 		addrs[i] = resolver.Address{Addr: s}
 	}
 	r.cc.UpdateState(resolver.State{Addresses: addrs})
+	if len(resp.Addr) > 0 {
+		timeout = r.checkTimeout
+	}
+	return
 }
 func (r *miniResolverResolver) ResolveNow(o resolver.ResolveNowOptions) {
 	//r.logger.Debug().Msgf("resolve now")

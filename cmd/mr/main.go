@@ -35,10 +35,11 @@ func main() {
 		cfgFile = "mediaserverpg.toml"
 	}
 	conf := &MiniResolverConfig{
-		LocalAddr:         "localhost:7777",
-		LogLevel:          "DEBUG",
-		BufferSize:        1024,
-		ServiceExpiration: config.Duration(10 * time.Minute),
+		LocalAddr:          "localhost:7777",
+		LogLevel:           "DEBUG",
+		BufferSize:         1024,
+		ServiceExpiration:  config.Duration(10 * time.Minute),
+		NotFoundExpiration: config.Duration(10 * time.Second),
 	}
 	if err := LoadMiniResolverConfig(cfgFS, cfgFile, conf); err != nil {
 		log.Fatalf("cannot load toml from [%v] %s: %v", cfgFS, cfgFile, err)
