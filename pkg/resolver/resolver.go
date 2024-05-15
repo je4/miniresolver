@@ -71,28 +71,31 @@ type miniResolverResolver struct {
 }
 
 func (r *miniResolverResolver) doIt() (timeout time.Duration) {
-	timeout = r.notFoundTimeout
 	addr := r.target.Endpoint()
 	r.logger.Debug().Msgf("start resolver for %s", addr)
-	resp, err := r.miniResolverclient.ResolveServices(context.Background(), &wrapperspb.StringValue{Value: addr})
+	resp, err := r.miniResolverclient.ResolveService(context.Background(), &wrapperspb.StringValue{Value: addr})
+	//resp, err := r.miniResolverclient.ResolveServices(context.Background(), &wrapperspb.StringValue{Value: addr})
 	if err != nil {
 		r.logger.Error().Err(err).Msgf("cannot resolve %s", addr)
 		r.cc.ReportError(errors.Wrapf(err, "cannot resolve %s", addr))
-		return
+		return 10 * time.Second
 	}
-	for _, a := range resp.Addr {
-		r.logger.Debug().Msgf("resolved %s to '%s'", addr, a)
+	if resp.String() == "" {
+		r.logger.Debug().Msgf("no service found for %s", addr)
 	}
-	addrs := make([]resolver.Address, len(resp.Addr))
-	for i, s := range resp.Addr {
-		addrs[i] = resolver.Address{Addr: s}
-	}
-	if err := r.cc.UpdateState(resolver.State{Addresses: addrs}); err != nil {
+	timeout = time.Duration(resp.GetNextCallWait()) * time.Second
+	/*
+		for _, a := range resp.Addr {
+			r.logger.Debug().Msgf("resolved %s to '%s'", addr, a)
+		}
+		addrs := make([]resolver.Address, len(resp.Addr))
+		for i, s := range resp.Addr {
+			addrs[i] = resolver.Address{Addr: s}
+		}
+	*/
+	if err := r.cc.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: resp.GetAddr()}}}); err != nil {
 		r.logger.Error().Err(err).Msgf("cannot update state for %s", addr)
 		return
-	}
-	if len(resp.Addr) > 0 {
-		timeout = r.checkTimeout
 	}
 	return
 }

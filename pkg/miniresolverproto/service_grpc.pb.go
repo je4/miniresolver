@@ -8,6 +8,7 @@ package miniresolverproto
 
 import (
 	context "context"
+	proto "github.com/je4/genericproto/v2/pkg/generic/proto"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -32,11 +33,11 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MiniResolverClient interface {
-	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DefaultResponse, error)
-	AddService(ctx context.Context, in *ServiceData, opts ...grpc.CallOption) (*DefaultResponse, error)
-	RemoveService(ctx context.Context, in *ServiceData, opts ...grpc.CallOption) (*DefaultResponse, error)
-	ResolveService(ctx context.Context, in *wrapperspb.StringValue, opts ...grpc.CallOption) (*wrapperspb.StringValue, error)
-	ResolveServices(ctx context.Context, in *wrapperspb.StringValue, opts ...grpc.CallOption) (*ServiceResponse, error)
+	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error)
+	AddService(ctx context.Context, in *ServiceData, opts ...grpc.CallOption) (*ResolverDefaultResponse, error)
+	RemoveService(ctx context.Context, in *ServiceData, opts ...grpc.CallOption) (*proto.DefaultResponse, error)
+	ResolveService(ctx context.Context, in *wrapperspb.StringValue, opts ...grpc.CallOption) (*ServiceResponse, error)
+	ResolveServices(ctx context.Context, in *wrapperspb.StringValue, opts ...grpc.CallOption) (*ServicesResponse, error)
 }
 
 type miniResolverClient struct {
@@ -47,8 +48,8 @@ func NewMiniResolverClient(cc grpc.ClientConnInterface) MiniResolverClient {
 	return &miniResolverClient{cc}
 }
 
-func (c *miniResolverClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DefaultResponse, error) {
-	out := new(DefaultResponse)
+func (c *miniResolverClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error) {
+	out := new(proto.DefaultResponse)
 	err := c.cc.Invoke(ctx, MiniResolver_Ping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -56,8 +57,8 @@ func (c *miniResolverClient) Ping(ctx context.Context, in *emptypb.Empty, opts .
 	return out, nil
 }
 
-func (c *miniResolverClient) AddService(ctx context.Context, in *ServiceData, opts ...grpc.CallOption) (*DefaultResponse, error) {
-	out := new(DefaultResponse)
+func (c *miniResolverClient) AddService(ctx context.Context, in *ServiceData, opts ...grpc.CallOption) (*ResolverDefaultResponse, error) {
+	out := new(ResolverDefaultResponse)
 	err := c.cc.Invoke(ctx, MiniResolver_AddService_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -65,8 +66,8 @@ func (c *miniResolverClient) AddService(ctx context.Context, in *ServiceData, op
 	return out, nil
 }
 
-func (c *miniResolverClient) RemoveService(ctx context.Context, in *ServiceData, opts ...grpc.CallOption) (*DefaultResponse, error) {
-	out := new(DefaultResponse)
+func (c *miniResolverClient) RemoveService(ctx context.Context, in *ServiceData, opts ...grpc.CallOption) (*proto.DefaultResponse, error) {
+	out := new(proto.DefaultResponse)
 	err := c.cc.Invoke(ctx, MiniResolver_RemoveService_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -74,8 +75,8 @@ func (c *miniResolverClient) RemoveService(ctx context.Context, in *ServiceData,
 	return out, nil
 }
 
-func (c *miniResolverClient) ResolveService(ctx context.Context, in *wrapperspb.StringValue, opts ...grpc.CallOption) (*wrapperspb.StringValue, error) {
-	out := new(wrapperspb.StringValue)
+func (c *miniResolverClient) ResolveService(ctx context.Context, in *wrapperspb.StringValue, opts ...grpc.CallOption) (*ServiceResponse, error) {
+	out := new(ServiceResponse)
 	err := c.cc.Invoke(ctx, MiniResolver_ResolveService_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -83,8 +84,8 @@ func (c *miniResolverClient) ResolveService(ctx context.Context, in *wrapperspb.
 	return out, nil
 }
 
-func (c *miniResolverClient) ResolveServices(ctx context.Context, in *wrapperspb.StringValue, opts ...grpc.CallOption) (*ServiceResponse, error) {
-	out := new(ServiceResponse)
+func (c *miniResolverClient) ResolveServices(ctx context.Context, in *wrapperspb.StringValue, opts ...grpc.CallOption) (*ServicesResponse, error) {
+	out := new(ServicesResponse)
 	err := c.cc.Invoke(ctx, MiniResolver_ResolveServices_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -96,11 +97,11 @@ func (c *miniResolverClient) ResolveServices(ctx context.Context, in *wrapperspb
 // All implementations must embed UnimplementedMiniResolverServer
 // for forward compatibility
 type MiniResolverServer interface {
-	Ping(context.Context, *emptypb.Empty) (*DefaultResponse, error)
-	AddService(context.Context, *ServiceData) (*DefaultResponse, error)
-	RemoveService(context.Context, *ServiceData) (*DefaultResponse, error)
-	ResolveService(context.Context, *wrapperspb.StringValue) (*wrapperspb.StringValue, error)
-	ResolveServices(context.Context, *wrapperspb.StringValue) (*ServiceResponse, error)
+	Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error)
+	AddService(context.Context, *ServiceData) (*ResolverDefaultResponse, error)
+	RemoveService(context.Context, *ServiceData) (*proto.DefaultResponse, error)
+	ResolveService(context.Context, *wrapperspb.StringValue) (*ServiceResponse, error)
+	ResolveServices(context.Context, *wrapperspb.StringValue) (*ServicesResponse, error)
 	mustEmbedUnimplementedMiniResolverServer()
 }
 
@@ -108,19 +109,19 @@ type MiniResolverServer interface {
 type UnimplementedMiniResolverServer struct {
 }
 
-func (UnimplementedMiniResolverServer) Ping(context.Context, *emptypb.Empty) (*DefaultResponse, error) {
+func (UnimplementedMiniResolverServer) Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
-func (UnimplementedMiniResolverServer) AddService(context.Context, *ServiceData) (*DefaultResponse, error) {
+func (UnimplementedMiniResolverServer) AddService(context.Context, *ServiceData) (*ResolverDefaultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddService not implemented")
 }
-func (UnimplementedMiniResolverServer) RemoveService(context.Context, *ServiceData) (*DefaultResponse, error) {
+func (UnimplementedMiniResolverServer) RemoveService(context.Context, *ServiceData) (*proto.DefaultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveService not implemented")
 }
-func (UnimplementedMiniResolverServer) ResolveService(context.Context, *wrapperspb.StringValue) (*wrapperspb.StringValue, error) {
+func (UnimplementedMiniResolverServer) ResolveService(context.Context, *wrapperspb.StringValue) (*ServiceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResolveService not implemented")
 }
-func (UnimplementedMiniResolverServer) ResolveServices(context.Context, *wrapperspb.StringValue) (*ServiceResponse, error) {
+func (UnimplementedMiniResolverServer) ResolveServices(context.Context, *wrapperspb.StringValue) (*ServicesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResolveServices not implemented")
 }
 func (UnimplementedMiniResolverServer) mustEmbedUnimplementedMiniResolverServer() {}

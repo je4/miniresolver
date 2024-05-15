@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	pbgeneric "github.com/je4/genericproto/v2/pkg/generic/proto"
 	pb "github.com/je4/miniresolver/v2/pkg/miniresolverproto"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"google.golang.org/grpc/peer"
@@ -28,15 +29,15 @@ type MiniResolver struct {
 	serviceExpiration time.Duration
 }
 
-func (d *MiniResolver) Ping(context.Context, *emptypb.Empty) (*pb.DefaultResponse, error) {
-	return &pb.DefaultResponse{
-		Status:  pb.ResultStatus_OK,
+func (d *MiniResolver) Ping(context.Context, *emptypb.Empty) (*pbgeneric.DefaultResponse, error) {
+	return &pbgeneric.DefaultResponse{
+		Status:  pbgeneric.ResultStatus_OK,
 		Message: "pong",
 		Data:    nil,
 	}, nil
 }
 
-func (d *MiniResolver) AddService(ctx context.Context, data *pb.ServiceData) (*pb.DefaultResponse, error) {
+func (d *MiniResolver) AddService(ctx context.Context, data *pb.ServiceData) (*pb.ResolverDefaultResponse, error) {
 	d.logger.Debug().Msgf("add service '%s' - '%s:%d'", data.GetService(), data.GetHost(), data.GetPort())
 
 	var address = fmt.Sprintf("%s:%d", data.GetHost(), data.GetPort())
@@ -56,16 +57,19 @@ func (d *MiniResolver) AddService(ctx context.Context, data *pb.ServiceData) (*p
 		}
 		address = fmt.Sprintf("%s:%d", host, data.GetPort())
 	}
-
+	waitSeconds := int64((d.serviceExpiration.Seconds() * 2.0) / 3.0)
 	d.services.addService(data.Service, address)
 	d.logger.Debug().Msgf("service '%s' - '%s' added", data.Service, address)
-	return &pb.DefaultResponse{
-		Status:  pb.ResultStatus_OK,
-		Message: fmt.Sprintf("service '%s' - '%s' added", data.Service, address),
+	return &pb.ResolverDefaultResponse{
+		Response: &pbgeneric.DefaultResponse{
+			Status:  pbgeneric.ResultStatus_OK,
+			Message: fmt.Sprintf("service '%s' - '%s' added", data.Service, address),
+		},
+		NextCallWait: waitSeconds,
 	}, nil
 }
 
-func (d *MiniResolver) RemoveService(ctx context.Context, data *pb.ServiceData) (*pb.DefaultResponse, error) {
+func (d *MiniResolver) RemoveService(ctx context.Context, data *pb.ServiceData) (*pbgeneric.DefaultResponse, error) {
 	d.logger.Debug().Msgf("remove service '%s' - '%s:%d'", data.Service, data.GetHost(), data.GetPort())
 
 	var address = fmt.Sprintf("%s:%d", data.GetHost(), data.GetPort())
@@ -87,29 +91,29 @@ func (d *MiniResolver) RemoveService(ctx context.Context, data *pb.ServiceData) 
 	}
 	d.services.removeService(data.Service, address)
 	d.logger.Debug().Msgf("service '%s' - '%s' removed", data.Service, address)
-	waitSeconds := int64((d.serviceExpiration.Seconds() * 2.0) / 3.0)
-	return &pb.DefaultResponse{
-		Status:      pb.ResultStatus_OK,
-		Message:     fmt.Sprintf("service '%s' - '%s' removed", data.Service, address),
-		WaitSeconds: &waitSeconds,
+	return &pbgeneric.DefaultResponse{
+		Status:  pbgeneric.ResultStatus_OK,
+		Message: fmt.Sprintf("service '%s' - '%s' removed", data.Service, address),
 	}, nil
 }
 
-func (d *MiniResolver) ResolveServices(ctx context.Context, data *wrapperspb.StringValue) (*pb.ServiceResponse, error) {
+func (d *MiniResolver) ResolveServices(ctx context.Context, data *wrapperspb.StringValue) (*pb.ServicesResponse, error) {
 	d.logger.Debug().Msgf("resolve services '%s'", data.Value)
-	addrs := d.services.getServices(data.Value)
-	return &pb.ServiceResponse{
-		Addr: addrs,
+	addrs, ncw := d.services.getServices(data.Value)
+	return &pb.ServicesResponse{
+		Addrs:        addrs,
+		NextCallWait: int64(ncw.Seconds()),
 	}, nil
 }
 
-func (d *MiniResolver) ResolveService(ctx context.Context, data *wrapperspb.StringValue) (*wrapperspb.StringValue, error) {
+func (d *MiniResolver) ResolveService(ctx context.Context, data *wrapperspb.StringValue) (*pb.ServiceResponse, error) {
 	d.logger.Debug().Msgf("resolve service '%s'", data.Value)
-	addr := d.services.getService(data.Value)
+	addr, ncw := d.services.getService(data.Value)
 	if addr == "" {
 		return nil, fmt.Errorf("service '%s' not found", data.Value)
 	}
-	return &wrapperspb.StringValue{
-		Value: addr,
+	return &pb.ServiceResponse{
+		Addr:         addr,
+		NextCallWait: int64(ncw.Seconds()),
 	}, nil
 }

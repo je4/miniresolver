@@ -86,8 +86,8 @@ func (s *Server) Startup() {
 				if resp, err := s.resolver.AddService(context.Background(), &pb.ServiceData{Service: name, Port: uint32(portInt)}); err != nil {
 					s.logger.Error().Err(err).Msg("cannot register service")
 				} else {
-					waitSeconds = resp.GetWaitSeconds()
-					s.logger.Info().Msgf("service registered: %v", resp.Message)
+					waitSeconds = resp.GetNextCallWait()
+					s.logger.Info().Msgf("service registered: %v", resp.GetResponse().GetMessage())
 				}
 			}
 			if waitSeconds == 0 {

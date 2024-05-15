@@ -5,10 +5,30 @@ import (
 	"time"
 )
 
+const minNextCallTimeout = 10 * time.Second
+
 type serviceEntry struct {
 	service   string
 	addresses map[string]time.Time
 	sort      []string
+}
+
+func (se *serviceEntry) nextCallTimeout() time.Duration {
+	if len(se.sort) == 0 {
+		return minNextCallTimeout
+	}
+	var m time.Duration = 1 * time.Hour
+	for _, a := range se.addresses {
+		x := -time.Until(a)
+		if x < m {
+			m = x
+		}
+	}
+	m += 2 * time.Second
+	if m < minNextCallTimeout {
+		m = minNextCallTimeout
+	}
+	return m
 }
 
 func (se *serviceEntry) removeOld(timeout time.Duration) {
@@ -23,6 +43,15 @@ func (se *serviceEntry) removeOld(timeout time.Duration) {
 		}
 	}
 	se.sort = newSort
+}
+
+func (se *serviceEntry) headToTail() {
+	if len(se.sort) <= 1 {
+		return
+	}
+	a := se.sort[0]
+	copy(se.sort, se.sort[1:])
+	se.sort[len(se.sort)-1] = a
 }
 
 func (se *serviceEntry) addAddress(addr string) {
@@ -49,21 +78,18 @@ func (se *serviceEntry) getAddresses(timeout time.Duration) []string {
 	return se.sort
 }
 
-func (se *serviceEntry) getAddress(timeout time.Duration) string {
+func (se *serviceEntry) getAddress(timeout time.Duration) (string, time.Duration) {
+	se.removeOld(timeout)
 	if len(se.sort) == 0 {
-		return ""
+		return "", 10 * time.Second
 	}
-
-	for _, addr := range se.sort {
-		if svc, ok := se.addresses[addr]; ok {
-			if time.Since(svc) < timeout {
-				return addr
-			}
-		}
+	a := se.sort[0]
+	se.headToTail()
+	nct := -time.Until(se.addresses[a])
+	if nct < minNextCallTimeout {
+		nct = minNextCallTimeout
 	}
-	se.sort = make([]string, 0, 1)
-	se.addresses = make(map[string]time.Time, 1)
-	return ""
+	return a, nct
 }
 
 func newCache(timeout time.Duration) *cache {
@@ -108,22 +134,22 @@ func (c *cache) removeService(name, addr string) {
 	}
 }
 
-func (c *cache) getServices(name string) []string {
+func (c *cache) getServices(name string) ([]string, time.Duration) {
 	c.Lock()
 	defer c.Unlock()
 	svcs, ok := c.services[name]
 	if !ok {
-		return []string{}
+		return []string{}, minNextCallTimeout
 	}
-	return svcs.getAddresses(c.timeout)
+	return svcs.getAddresses(c.timeout), svcs.nextCallTimeout()
 }
 
-func (c *cache) getService(name string) string {
+func (c *cache) getService(name string) (string, time.Duration) {
 	c.Lock()
 	defer c.Unlock()
 	svcs, ok := c.services[name]
 	if !ok {
-		return ""
+		return "", minNextCallTimeout
 	}
 	return svcs.getAddress(c.timeout)
 }
