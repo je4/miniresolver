@@ -13,23 +13,23 @@ import (
 	"time"
 )
 
-func NewMiniResolver(bufferSize int, serviceExpiration time.Duration, logger zLogger.ZLogger) *MiniResolver {
-
-	return &MiniResolver{
-		logger:            logger,
+func NewMiniResolver(bufferSize int, serviceExpiration time.Duration, logger zLogger.ZLogger) *miniResolver {
+	_logger := logger.With().Str("rpcService", "miniResolver").Logger()
+	return &miniResolver{
+		logger:            &_logger,
 		services:          newCache(serviceExpiration),
 		serviceExpiration: serviceExpiration,
 	}
 }
 
-type MiniResolver struct {
+type miniResolver struct {
 	pb.UnimplementedMiniResolverServer
 	logger            zLogger.ZLogger
 	services          *cache
 	serviceExpiration time.Duration
 }
 
-func (d *MiniResolver) Ping(context.Context, *emptypb.Empty) (*pbgeneric.DefaultResponse, error) {
+func (d *miniResolver) Ping(context.Context, *emptypb.Empty) (*pbgeneric.DefaultResponse, error) {
 	return &pbgeneric.DefaultResponse{
 		Status:  pbgeneric.ResultStatus_OK,
 		Message: "pong",
@@ -37,7 +37,7 @@ func (d *MiniResolver) Ping(context.Context, *emptypb.Empty) (*pbgeneric.Default
 	}, nil
 }
 
-func (d *MiniResolver) AddService(ctx context.Context, data *pb.ServiceData) (*pb.ResolverDefaultResponse, error) {
+func (d *miniResolver) AddService(ctx context.Context, data *pb.ServiceData) (*pb.ResolverDefaultResponse, error) {
 	d.logger.Debug().Msgf("add service '%s' - '%s:%d'", data.GetService(), data.GetHost(), data.GetPort())
 
 	var address = fmt.Sprintf("%s:%d", data.GetHost(), data.GetPort())
@@ -69,7 +69,7 @@ func (d *MiniResolver) AddService(ctx context.Context, data *pb.ServiceData) (*p
 	}, nil
 }
 
-func (d *MiniResolver) RemoveService(ctx context.Context, data *pb.ServiceData) (*pbgeneric.DefaultResponse, error) {
+func (d *miniResolver) RemoveService(ctx context.Context, data *pb.ServiceData) (*pbgeneric.DefaultResponse, error) {
 	d.logger.Debug().Msgf("remove service '%s' - '%s:%d'", data.Service, data.GetHost(), data.GetPort())
 
 	var address = fmt.Sprintf("%s:%d", data.GetHost(), data.GetPort())
@@ -97,7 +97,7 @@ func (d *MiniResolver) RemoveService(ctx context.Context, data *pb.ServiceData) 
 	}, nil
 }
 
-func (d *MiniResolver) ResolveServices(ctx context.Context, data *wrapperspb.StringValue) (*pb.ServicesResponse, error) {
+func (d *miniResolver) ResolveServices(ctx context.Context, data *wrapperspb.StringValue) (*pb.ServicesResponse, error) {
 	d.logger.Debug().Msgf("resolve services '%s'", data.Value)
 	addrs, ncw := d.services.getServices(data.Value)
 	return &pb.ServicesResponse{
@@ -106,7 +106,7 @@ func (d *MiniResolver) ResolveServices(ctx context.Context, data *wrapperspb.Str
 	}, nil
 }
 
-func (d *MiniResolver) ResolveService(ctx context.Context, data *wrapperspb.StringValue) (*pb.ServiceResponse, error) {
+func (d *miniResolver) ResolveService(ctx context.Context, data *wrapperspb.StringValue) (*pb.ServiceResponse, error) {
 	d.logger.Debug().Msgf("resolve service '%s'", data.Value)
 	addr, ncw := d.services.getService(data.Value)
 	if addr == "" {
