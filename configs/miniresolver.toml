@@ -2,3 +2,4 @@ localaddr = ":7777"
 
 [tls]
 type = "dev"
+
