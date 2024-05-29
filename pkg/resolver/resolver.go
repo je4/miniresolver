@@ -119,7 +119,7 @@ func (c *MiniResolver) Close() error {
 	return errors.Combine(errs...)
 }
 
-func NewServer(c *MiniResolver, addr string) (*Server, error) {
+func (c *MiniResolver) NewServer(addr string) (*Server, error) {
 	if c.MiniResolverClient == nil {
 		return nil, errors.Errorf("no miniresolver client")
 	}
