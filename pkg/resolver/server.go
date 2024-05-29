@@ -1,4 +1,4 @@
-package grpchelper
+package resolver
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func NewServer(addr string, tlsConfig *tls.Config, resolver pb.MiniResolverClient, logger zLogger.ZLogger, opts ...grpc.ServerOption) (*Server, error) {
+func newServer(addr string, tlsConfig *tls.Config, resolver pb.MiniResolverClient, logger zLogger.ZLogger, opts ...grpc.ServerOption) (*Server, error) {
 	if tlsConfig == nil {
 		return nil, errors.New("no tls configuration")
 	}

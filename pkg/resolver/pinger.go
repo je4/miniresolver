@@ -1,4 +1,4 @@
-package client
+package resolver
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type GRPCPinger interface {
 func DoPing(pinger GRPCPinger, logger zLogger.ZLogger) {
 	pingerType := reflect.TypeOf(pinger)
 	if resp, err := pinger.Ping(context.Background(), &emptypb.Empty{}); err != nil {
-		logger.Error().Msgf("cannot ping %T: %v", pinger, err)
+		logger.Error().Msgf("cannot ping %s: %v", pingerType.String(), err)
 	} else {
 		if resp.GetStatus() != genericproto.ResultStatus_OK {
 			logger.Error().Msgf("cannot ping %s: %v", pingerType.String(), resp.GetStatus())
