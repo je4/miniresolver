@@ -3,20 +3,22 @@ package main
 import (
 	"emperror.dev/errors"
 	"github.com/BurntSushi/toml"
-	"github.com/je4/trustutil/v2/pkg/loader"
+	loaderConfig "github.com/je4/trustutil/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/config"
+	"github.com/je4/utils/v2/pkg/zLogger"
 	"io/fs"
 	"os"
 )
 
 type MiniResolverConfig struct {
-	LocalAddr          string           `toml:"localaddr"`
-	TLS                loader.TLSConfig `toml:"tls"`
-	LogFile            string           `toml:"logfile"`
-	LogLevel           string           `toml:"loglevel"`
-	ServiceExpiration  config.Duration  `toml:"serviceExpiration"`
-	NotFoundExpiration config.Duration  `toml:"notFoundExpiration"`
-	BufferSize         int              `toml:"bufferSize"`
+	LocalAddr          string                 `toml:"localaddr"`
+	TLS                loaderConfig.TLSConfig `toml:"tls"`
+	LogFile            string                 `toml:"logfile"`
+	LogLevel           string                 `toml:"loglevel"`
+	ServiceExpiration  config.Duration        `toml:"serviceExpiration"`
+	NotFoundExpiration config.Duration        `toml:"notFoundExpiration"`
+	BufferSize         int                    `toml:"bufferSize"`
+	Log                zLogger.Config         `toml:"log"`
 }
 
 func LoadMiniResolverConfig(fSys fs.FS, fp string, conf *MiniResolverConfig) error {

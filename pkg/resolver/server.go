@@ -93,7 +93,7 @@ func (s *Server) Startup() {
 			if waitSeconds == 0 {
 				waitSeconds = 5 * 60
 			}
-			s.logger.Info().Msgf("waiting %d seconds for refreshing service", waitSeconds)
+			s.logger.Debug().Msgf("waiting %d seconds for refreshing service", waitSeconds)
 			select {
 			case <-s.done:
 				endLoop = true

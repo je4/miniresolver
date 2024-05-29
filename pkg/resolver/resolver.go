@@ -111,8 +111,13 @@ func NewClient[V any](c *MiniResolver, newClientFunc func(conn grpc.ClientConnIn
 
 func (c *MiniResolver) Close() error {
 	var errs []error
-	for _, closer := range append(c.clientCloser, c.conn) {
+	for _, closer := range c.clientCloser {
 		if e := closer.Close(); e != nil {
+			errs = append(errs, e)
+		}
+	}
+	if c.conn != nil {
+		if e := c.conn.Close(); e != nil {
 			errs = append(errs, e)
 		}
 	}
