@@ -32,7 +32,7 @@ func main() {
 		cfgFile = filepath.Base(*cfg)
 	} else {
 		cfgFS = configs.ConfigFS
-		cfgFile = "mediaserverpg.toml"
+		cfgFile = "miniresolver.toml"
 	}
 	conf := &MiniResolverConfig{
 		LocalAddr:          "localhost:7777",
