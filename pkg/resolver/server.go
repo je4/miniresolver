@@ -27,6 +27,7 @@ func newServer(addr string, tlsConfig *tls.Config, resolver pb.MiniResolverClien
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot listen on %s", addr)
 	}
+	addr = lis.Addr().String()
 	interceptor := trusthelper.NewInterceptor(logger)
 
 	opts = append(opts, grpc.Creds(credentials.NewTLS(tlsConfig)), grpc.UnaryInterceptor(interceptor.ServerInterceptor))
