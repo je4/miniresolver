@@ -29,6 +29,8 @@ func newServer(addr string, tlsConfig *tls.Config, resolver pb.MiniResolverClien
 	}
 	addr = lis.Addr().String()
 	logger.Info().Msgf("listening on %s", addr)
+	l2 := logger.With().Str("addr", addr).Logger()
+	logger = &l2
 	interceptor := trusthelper.NewInterceptor(logger)
 
 	opts = append(opts, grpc.Creds(credentials.NewTLS(tlsConfig)), grpc.UnaryInterceptor(interceptor.ServerInterceptor))
