@@ -55,6 +55,10 @@ type Server struct {
 	addr         string
 }
 
+func (s *Server) GetAddr() string {
+	return s.addr
+}
+
 func (s *Server) Startup() {
 	s.waitShutdown.Add(2)
 	go func() {
