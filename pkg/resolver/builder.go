@@ -1,8 +1,9 @@
-package builder
+package resolver
 
 import (
 	"context"
 	"emperror.dev/errors"
+	"fmt"
 	pb "github.com/je4/miniresolver/v2/pkg/miniresolverproto"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"google.golang.org/grpc/resolver"
@@ -12,7 +13,7 @@ import (
 
 const RESOLVERSCHEMA = "miniresolver"
 
-func NewMiniResolverResolverBuilder(miniResolverclient pb.MiniResolverClient, checkTimeout time.Duration, notFoundTimeout time.Duration, logger zLogger.ZLogger) resolver.Builder {
+func NewMiniResolverResolverBuilder(miniResolverclient *MiniResolver, checkTimeout time.Duration, notFoundTimeout time.Duration, logger zLogger.ZLogger) resolver.Builder {
 	if time.Duration(checkTimeout).Seconds() == 0 {
 		checkTimeout = 10 * time.Minute
 	}
@@ -28,7 +29,7 @@ func NewMiniResolverResolverBuilder(miniResolverclient pb.MiniResolverClient, ch
 }
 
 type miniResolverResolverBuilder struct {
-	miniResolverclient pb.MiniResolverClient
+	miniResolverclient *MiniResolver
 	logger             zLogger.ZLogger
 	checkTimeout       time.Duration
 	notFoundTimeout    time.Duration
@@ -44,10 +45,18 @@ func (mrrb *miniResolverResolverBuilder) Build(target resolver.Target, cc resolv
 		checkTimeout:       mrrb.checkTimeout,
 		notFoundTimeout:    mrrb.notFoundTimeout,
 	}
+
 	go func() {
+		refreshTarget := make(chan bool)
+		defer close(refreshTarget)
+		tstr := fmt.Sprintf("%s:%s", target.URL.Scheme, target.Endpoint())
+		mrrb.miniResolverclient.WatchService(tstr, refreshTarget)
+		defer mrrb.miniResolverclient.UnwatchService(tstr)
 		for {
 			timeout := r.doIt()
 			select {
+			case <-refreshTarget:
+				mrrb.logger.Debug().Msgf("refresh target %s", target.Endpoint())
 			case <-r.done:
 				return
 			case <-time.After(timeout):

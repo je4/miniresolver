@@ -65,7 +65,7 @@ func (s *Server) Startup() {
 	s.waitShutdown.Add(2)
 	go func() {
 		defer s.waitShutdown.Done()
-		s.logger.Info().Msgf("starting server at %s", s.listener.Addr().String())
+		s.logger.Info().Msg("starting server")
 		if err := s.Server.Serve(s.listener); err != nil {
 			s.logger.Error().Err(err).Msg("cannot serve")
 		} else {
