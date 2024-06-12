@@ -75,7 +75,7 @@ func main() {
 		defer _logfile.Close()
 	}
 
-	l2 := _logger.With().Str("host", hostname).Str("addr", conf.LocalAddr).Logger() //.Output(output)
+	l2 := _logger.With().Timestamp().Str("host", hostname).Str("addr", conf.LocalAddr).Logger() //.Output(output)
 	var logger zLogger.ZLogger = &l2
 
 	srv := service.NewMiniResolver(conf.BufferSize, time.Duration(conf.ServiceExpiration), logger)
@@ -90,6 +90,10 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("cannot create server")
 	}
+	addr := grpcServer.GetAddr()
+	l2 = _logger.With().Str("addr", addr).Logger() //.Output(output)
+	logger = &l2
+
 	pb.RegisterMiniResolverServer(grpcServer, srv)
 
 	grpcServer.Startup()
