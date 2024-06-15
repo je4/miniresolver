@@ -17,7 +17,7 @@ func NewMiniResolver(bufferSize int, serviceExpiration time.Duration, logger zLo
 	_logger := logger.With().Str("rpcService", "miniResolver").Logger()
 	return &miniResolver{
 		logger:            &_logger,
-		services:          newCache(serviceExpiration),
+		services:          newCache(serviceExpiration, &_logger),
 		serviceExpiration: serviceExpiration,
 	}
 }
@@ -38,7 +38,7 @@ func (d *miniResolver) Ping(context.Context, *emptypb.Empty) (*pbgeneric.Default
 }
 
 func (d *miniResolver) AddService(ctx context.Context, data *pb.ServiceData) (*pb.ResolverDefaultResponse, error) {
-	d.logger.Debug().Msgf("add service '%s' - '%s:%d'", data.GetService(), data.GetHost(), data.GetPort())
+	d.logger.Debug().Msgf("add service '%v.%s' - '%s:%d'", data.GetDomains(), data.GetService(), data.GetHost(), data.GetPort())
 
 	var address = fmt.Sprintf("%s:%d", data.GetHost(), data.GetPort())
 	if data.GetHost() == "" {
@@ -58,12 +58,12 @@ func (d *miniResolver) AddService(ctx context.Context, data *pb.ServiceData) (*p
 		address = fmt.Sprintf("%s:%d", host, data.GetPort())
 	}
 	waitSeconds := int64((d.serviceExpiration.Seconds() * 2.0) / 3.0)
-	d.services.addService(data.Service, address)
+	d.services.addService(data.Service, address, data.Domains)
 	d.logger.Debug().Msgf("service '%s' - '%s' added", data.Service, address)
 	return &pb.ResolverDefaultResponse{
 		Response: &pbgeneric.DefaultResponse{
 			Status:  pbgeneric.ResultStatus_OK,
-			Message: fmt.Sprintf("service '%s' - '%s' added", data.Service, address),
+			Message: fmt.Sprintf("service '%v.%s' - '%s' added", data.Domains, data.Service, address),
 		},
 		NextCallWait: waitSeconds,
 	}, nil
@@ -89,7 +89,7 @@ func (d *miniResolver) RemoveService(ctx context.Context, data *pb.ServiceData) 
 		}
 		address = fmt.Sprintf("%s:%d", host, data.GetPort())
 	}
-	d.services.removeService(data.Service, address)
+	d.services.removeService(data.Service, address, data.Domains)
 	d.logger.Debug().Msgf("service '%s' - '%s' removed", data.Service, address)
 	return &pbgeneric.DefaultResponse{
 		Status:  pbgeneric.ResultStatus_OK,

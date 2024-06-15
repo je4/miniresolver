@@ -1,6 +1,8 @@
 package service
 
 import (
+	"github.com/je4/utils/v2/pkg/zLogger"
+	"golang.org/x/exp/maps"
 	"sync"
 	"time"
 )
@@ -92,11 +94,12 @@ func (se *serviceEntry) getAddress(timeout time.Duration) (string, time.Duration
 	return a, nct
 }
 
-func newCache(timeout time.Duration) *cache {
+func newCache(timeout time.Duration, logger zLogger.ZLogger) *cache {
 	return &cache{
 		Mutex:    sync.Mutex{},
 		timeout:  timeout,
 		services: make(map[string]*serviceEntry),
+		logger:   logger,
 	}
 }
 
@@ -104,33 +107,59 @@ type cache struct {
 	sync.Mutex
 	timeout  time.Duration
 	services map[string]*serviceEntry
+	logger   zLogger.ZLogger
 }
 
-func (c *cache) addService(name, addr string) {
+func (c *cache) addService(name, addr string, domains []string) {
 	c.Lock()
 	defer c.Unlock()
-	svcs, ok := c.services[name]
-	if !ok {
-		svcs = &serviceEntry{
-			service:   name,
-			addresses: make(map[string]time.Time),
-			sort:      make([]string, 0, 1),
+	if len(domains) == 0 {
+		domains = []string{""}
+	}
+	for _, domain := range domains {
+		serviceName := name
+		if domain != "" {
+			serviceName = domain + "." + name
 		}
-		c.services[name] = svcs
+		svcs, ok := c.services[serviceName]
+		if !ok {
+			svcs = &serviceEntry{
+				service:   serviceName,
+				addresses: make(map[string]time.Time),
+				sort:      make([]string, 0, 1),
+			}
+			c.services[serviceName] = svcs
+		}
+		svcs.addAddress(addr)
+		c.logger.Debug().Msgf("service address added %s: %v", serviceName, addr)
 	}
-	svcs.addAddress(addr)
+	for name, svcs := range c.services {
+		if len(svcs.addresses) == 0 {
+			delete(c.services, name)
+		} else {
+			c.logger.Debug().Msgf("service %s: %v in cache", name, maps.Keys(svcs.addresses))
+		}
+	}
 }
 
-func (c *cache) removeService(name, addr string) {
+func (c *cache) removeService(name, addr string, domains []string) {
 	c.Lock()
 	defer c.Unlock()
-	svcs, ok := c.services[name]
-	if !ok {
-		return
+	if len(domains) == 0 {
+		domains = []string{""}
 	}
-	svcs.removeAddress(addr)
-	if len(svcs.addresses) == 0 {
-		delete(c.services, name)
+	for _, domain := range domains {
+		if domain != "" {
+			name = domain + "." + name
+		}
+		svcs, ok := c.services[name]
+		if !ok {
+			return
+		}
+		svcs.removeAddress(addr)
+		if len(svcs.addresses) == 0 {
+			delete(c.services, name)
+		}
 	}
 }
 

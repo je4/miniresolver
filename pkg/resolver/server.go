@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func newServer(addr string, tlsConfig *tls.Config, resolver pb.MiniResolverClient, logger zLogger.ZLogger, opts ...grpc.ServerOption) (*Server, error) {
+func newServer(addr string, domains []string, tlsConfig *tls.Config, resolver pb.MiniResolverClient, logger zLogger.ZLogger, opts ...grpc.ServerOption) (*Server, error) {
 	if tlsConfig == nil {
 		return nil, errors.New("no tls configuration")
 	}
@@ -31,7 +31,7 @@ func newServer(addr string, tlsConfig *tls.Config, resolver pb.MiniResolverClien
 	logger.Info().Msgf("listening on %s", addr)
 	l2 := logger.With().Str("addr", addr).Logger()
 	logger = &l2
-	interceptor := trusthelper.NewInterceptor(logger)
+	interceptor := trusthelper.NewInterceptor(domains, logger)
 
 	opts = append(opts, grpc.Creds(credentials.NewTLS(tlsConfig)), grpc.UnaryInterceptor(interceptor.ServerInterceptor))
 	grpcServer := grpc.NewServer(opts...)
@@ -43,6 +43,7 @@ func newServer(addr string, tlsConfig *tls.Config, resolver pb.MiniResolverClien
 		done:         make(chan bool),
 		resolver:     resolver,
 		waitShutdown: sync.WaitGroup{},
+		domains:      domains,
 	}
 	return server, nil
 }
@@ -55,6 +56,7 @@ type Server struct {
 	waitShutdown sync.WaitGroup
 	resolver     pb.MiniResolverClient
 	addr         string
+	domains      []string
 }
 
 func (s *Server) GetAddr() string {
@@ -80,7 +82,7 @@ func (s *Server) Startup() {
 		for endLoop == false {
 			var waitSeconds int64 = 10
 			for name, _ := range si {
-				s.logger.Info().Msgf("registering service %s at %s", name, s.addr)
+				s.logger.Info().Msgf("registering service %v.%s at %s ", s.domains, name, s.addr)
 				_, port, err := net.SplitHostPort(s.addr)
 				if err != nil {
 					s.logger.Error().Err(err).Msgf("cannot split host port of '%s'", s.addr)
@@ -91,7 +93,11 @@ func (s *Server) Startup() {
 					s.logger.Error().Err(err).Msgf("cannot convert port '%s' to int", port)
 					continue
 				}
-				if resp, err := s.resolver.AddService(context.Background(), &pb.ServiceData{Service: name, Port: uint32(portInt)}); err != nil {
+				if resp, err := s.resolver.AddService(context.Background(), &pb.ServiceData{
+					Service: name,
+					Port:    uint32(portInt),
+					Domains: s.domains,
+				}); err != nil {
 					s.logger.Error().Err(err).Msg("cannot register service")
 				} else {
 					waitSeconds = resp.GetNextCallWait()
@@ -111,7 +117,7 @@ func (s *Server) Startup() {
 			}
 		}
 		for name, _ := range si {
-			s.logger.Info().Msgf("unregistering service %s at %s", name, s.addr)
+			s.logger.Info().Msgf("unregistering service %v.%s at %s", s.domains, name, s.addr)
 			_, port, err := net.SplitHostPort(s.addr)
 			if err != nil {
 				s.logger.Error().Err(err).Msgf("cannot split host port of '%s'", s.addr)
@@ -122,7 +128,11 @@ func (s *Server) Startup() {
 				s.logger.Error().Err(err).Msgf("cannot convert port '%s' to int", port)
 				continue
 			}
-			if resp, err := s.resolver.RemoveService(context.Background(), &pb.ServiceData{Service: name, Port: uint32(portInt)}); err != nil {
+			if resp, err := s.resolver.RemoveService(context.Background(), &pb.ServiceData{
+				Service: name,
+				Port:    uint32(portInt),
+				Domains: s.domains,
+			}); err != nil {
 				s.logger.Error().Err(err).Msg("cannot unregister service")
 			} else {
 				s.logger.Info().Msgf("service unregistered: %v", resp.Message)

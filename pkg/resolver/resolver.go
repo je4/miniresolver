@@ -166,11 +166,11 @@ func (c *MiniResolver) Close() error {
 	return errors.Combine(errs...)
 }
 
-func (c *MiniResolver) NewServer(addr string) (*Server, error) {
+func (c *MiniResolver) NewServer(addr string, domains []string) (*Server, error) {
 	if c.MiniResolverClient == nil {
 		return nil, errors.Errorf("no miniresolver client")
 	}
-	server, err := newServer(addr, c.serverTLSConfig, c.MiniResolverClient, c.logger, c.serverOpts...)
+	server, err := newServer(addr, domains, c.serverTLSConfig, c.MiniResolverClient, c.logger, c.serverOpts...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create server for %s", addr)
 	}

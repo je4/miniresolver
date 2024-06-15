@@ -86,7 +86,7 @@ func main() {
 	}
 	defer l.Close()
 
-	grpcServer, err := grpchelper.NewServer(conf.LocalAddr, tlsConfig, logger)
+	grpcServer, err := grpchelper.NewServer(conf.LocalAddr, tlsConfig, nil, logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("cannot create server")
 	}
