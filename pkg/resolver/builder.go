@@ -15,10 +15,10 @@ const RESOLVERSCHEMA = "miniresolver"
 
 func NewMiniResolverResolverBuilder(miniResolverclient *MiniResolver, checkTimeout time.Duration, notFoundTimeout time.Duration, logger zLogger.ZLogger) resolver.Builder {
 	if time.Duration(checkTimeout).Seconds() == 0 {
-		checkTimeout = 10 * time.Minute
+		checkTimeout = 4 * time.Minute
 	}
 	if time.Duration(notFoundTimeout).Seconds() == 0 {
-		notFoundTimeout = 10 * time.Second
+		notFoundTimeout = 3 * time.Second
 	}
 	return &miniResolverResolverBuilder{
 		miniResolverclient: miniResolverclient,

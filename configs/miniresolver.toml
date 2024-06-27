@@ -1,4 +1,5 @@
 localaddr = ":7777"
+proxyaddr = ":7778"
 
 [tls]
 type = "dev"

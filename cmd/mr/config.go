@@ -12,6 +12,8 @@ import (
 
 type MiniResolverConfig struct {
 	LocalAddr          string                 `toml:"localaddr"`
+	ProxyAddr          string                 `toml:"proxyaddr"`
+	ProxyExternalAddr  string                 `toml:"proxyexternaladdr"`
 	TLS                loaderConfig.TLSConfig `toml:"tls"`
 	LogFile            string                 `toml:"logfile"`
 	LogLevel           string                 `toml:"loglevel"`

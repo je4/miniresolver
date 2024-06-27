@@ -13,6 +13,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"io"
+	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -136,8 +138,12 @@ func NewClient[V any](c *MiniResolver, newClientFunc func(conn grpc.ClientConnIn
 	if _, ok := c.clientMap[serviceName]; ok {
 		clientAddr = c.clientMap[serviceName]
 	} else {
-		if c.MiniResolverClient != nil {
-			clientAddr = fmt.Sprintf("miniresolver:%s", serviceName)
+		if os.Getenv("HTTPS_PROXY") != "" {
+			clientAddr = "passthrough:///" + serviceName
+		} else {
+			if c.MiniResolverClient != nil && !strings.Contains(serviceName, ":") {
+				clientAddr = fmt.Sprintf("miniresolver:%s", serviceName)
+			}
 		}
 	}
 	if clientAddr == "" {

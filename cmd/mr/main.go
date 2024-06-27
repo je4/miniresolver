@@ -39,8 +39,8 @@ func main() {
 		LocalAddr:          "localhost:7777",
 		LogLevel:           "DEBUG",
 		BufferSize:         1024,
-		ServiceExpiration:  config.Duration(10 * time.Minute),
-		NotFoundExpiration: config.Duration(10 * time.Second),
+		ServiceExpiration:  config.Duration(5 * time.Minute),
+		NotFoundExpiration: config.Duration(4 * time.Second),
 	}
 	if err := LoadMiniResolverConfig(cfgFS, cfgFile, conf); err != nil {
 		log.Fatalf("cannot load toml from [%v] %s: %v", cfgFS, cfgFile, err)
@@ -78,7 +78,7 @@ func main() {
 	l2 := _logger.With().Timestamp().Str("host", hostname).Str("addr", conf.LocalAddr).Logger() //.Output(output)
 	var logger zLogger.ZLogger = &l2
 
-	srv := service.NewMiniResolver(conf.BufferSize, time.Duration(conf.ServiceExpiration), logger)
+	srv := service.NewMiniResolver(conf.BufferSize, time.Duration(conf.ServiceExpiration), conf.ProxyAddr, logger)
 
 	tlsConfig, l, err := loader.CreateServerLoader(true, &conf.TLS, nil, logger)
 	if err != nil {
@@ -97,6 +97,11 @@ func main() {
 	pb.RegisterMiniResolverServer(grpcServer, srv)
 
 	grpcServer.Startup()
+	if conf.ProxyAddr != "" {
+		if err := srv.StartProxy(); err != nil {
+			logger.Error().Err(err).Msg("cannot start proxy")
+		}
+	}
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
@@ -105,5 +110,11 @@ func main() {
 	fmt.Println("got signal:", s)
 
 	defer grpcServer.Shutdown()
-
+	if conf.ProxyAddr != "" {
+		defer func() {
+			if err := srv.StopProxy(); err != nil {
+				logger.Error().Err(err).Msg("cannot stop proxy")
+			}
+		}()
+	}
 }
