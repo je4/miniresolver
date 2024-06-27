@@ -110,7 +110,7 @@ type cache struct {
 	logger   zLogger.ZLogger
 }
 
-func (c *cache) addService(name, addr string, domains []string) {
+func (c *cache) addService(name, addr string, domains []string, single bool) {
 	c.Lock()
 	defer c.Unlock()
 	if len(domains) == 0 {
@@ -122,7 +122,7 @@ func (c *cache) addService(name, addr string, domains []string) {
 			serviceName = domain + "." + name
 		}
 		svcs, ok := c.services[serviceName]
-		if !ok {
+		if single || !ok {
 			svcs = &serviceEntry{
 				service:   serviceName,
 				addresses: make(map[string]time.Time),
