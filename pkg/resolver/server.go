@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func newServer(addr string, domains []string, tlsConfig *tls.Config, resolver pb.MiniResolverClient, logger zLogger.ZLogger, opts ...grpc.ServerOption) (*Server, error) {
+func newServer(addr string, domains []string, tlsConfig *tls.Config, resolver pb.MiniResolverClient, single bool, logger zLogger.ZLogger, opts ...grpc.ServerOption) (*Server, error) {
 	if tlsConfig == nil {
 		return nil, errors.New("no tls configuration")
 	}
@@ -44,6 +44,7 @@ func newServer(addr string, domains []string, tlsConfig *tls.Config, resolver pb
 		resolver:     resolver,
 		waitShutdown: sync.WaitGroup{},
 		domains:      domains,
+		single:       single,
 	}
 	return server, nil
 }
@@ -57,6 +58,7 @@ type Server struct {
 	resolver     pb.MiniResolverClient
 	addr         string
 	domains      []string
+	single       bool
 }
 
 func (s *Server) GetAddr() string {
@@ -97,6 +99,7 @@ func (s *Server) Startup() {
 					Service: name,
 					Port:    uint32(portInt),
 					Domains: s.domains,
+					Single:  s.single,
 				}); err != nil {
 					s.logger.Error().Err(err).Msg("cannot register service")
 				} else {
