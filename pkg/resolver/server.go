@@ -80,11 +80,15 @@ func (s *Server) Startup() {
 	go func() {
 		defer s.waitShutdown.Done()
 		si := s.Server.GetServiceInfo()
+		singlestr := ""
+		if s.single {
+			singlestr = "single "
+		}
 		var endLoop = false
 		for endLoop == false {
 			var waitSeconds int64 = 10
 			for name, _ := range si {
-				s.logger.Info().Msgf("registering service %v.%s at %s ", s.domains, name, s.addr)
+				s.logger.Info().Msgf("registering %sservice %v.%s at %s ", singlestr, s.domains, name, s.addr)
 				_, port, err := net.SplitHostPort(s.addr)
 				if err != nil {
 					s.logger.Error().Err(err).Msgf("cannot split host port of '%s'", s.addr)
@@ -104,7 +108,7 @@ func (s *Server) Startup() {
 					s.logger.Error().Err(err).Msg("cannot register service")
 				} else {
 					waitSeconds = resp.GetNextCallWait()
-					s.logger.Info().Msgf("service registered: %v", resp.GetResponse().GetMessage())
+					s.logger.Info().Msgf("%sservice registered: %v", singlestr, resp.GetResponse().GetMessage())
 				}
 			}
 			if waitSeconds == 0 {
@@ -120,7 +124,7 @@ func (s *Server) Startup() {
 			}
 		}
 		for name, _ := range si {
-			s.logger.Info().Msgf("unregistering service %v.%s at %s", s.domains, name, s.addr)
+			s.logger.Info().Msgf("unregistering %sservice %v.%s at %s", singlestr, s.domains, name, s.addr)
 			_, port, err := net.SplitHostPort(s.addr)
 			if err != nil {
 				s.logger.Error().Err(err).Msgf("cannot split host port of '%s'", s.addr)
@@ -138,7 +142,7 @@ func (s *Server) Startup() {
 			}); err != nil {
 				s.logger.Error().Err(err).Msg("cannot unregister service")
 			} else {
-				s.logger.Info().Msgf("service unregistered: %v", resp.Message)
+				s.logger.Info().Msgf("%sservice unregistered: %v", singlestr, resp.Message)
 			}
 		}
 	}()
