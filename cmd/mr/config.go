@@ -3,24 +3,24 @@ package main
 import (
 	"emperror.dev/errors"
 	"github.com/BurntSushi/toml"
-	loaderConfig "github.com/je4/trustutil/v2/pkg/config"
+	"github.com/je4/certloader/v2/pkg/loader"
 	"github.com/je4/utils/v2/pkg/config"
-	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/je4/utils/v2/pkg/stashconfig"
 	"io/fs"
 	"os"
 )
 
 type MiniResolverConfig struct {
-	LocalAddr          string                 `toml:"localaddr"`
-	ProxyAddr          string                 `toml:"proxyaddr"`
-	ProxyExternalAddr  string                 `toml:"proxyexternaladdr"`
-	TLS                loaderConfig.TLSConfig `toml:"tls"`
-	LogFile            string                 `toml:"logfile"`
-	LogLevel           string                 `toml:"loglevel"`
-	ServiceExpiration  config.Duration        `toml:"serviceExpiration"`
-	NotFoundExpiration config.Duration        `toml:"notFoundExpiration"`
-	BufferSize         int                    `toml:"bufferSize"`
-	Log                zLogger.Config         `toml:"log"`
+	LocalAddr          string             `toml:"localaddr"`
+	ProxyAddr          string             `toml:"proxyaddr"`
+	ProxyExternalAddr  string             `toml:"proxyexternaladdr"`
+	TLS                loader.Config      `toml:"tls"`
+	LogFile            string             `toml:"logfile"`
+	LogLevel           string             `toml:"loglevel"`
+	ServiceExpiration  config.Duration    `toml:"serviceExpiration"`
+	NotFoundExpiration config.Duration    `toml:"notFoundExpiration"`
+	BufferSize         int                `toml:"bufferSize"`
+	Log                stashconfig.Config `toml:"log"`
 }
 
 func LoadMiniResolverConfig(fSys fs.FS, fp string, conf *MiniResolverConfig) error {

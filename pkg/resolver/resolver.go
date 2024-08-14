@@ -11,9 +11,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -65,10 +67,10 @@ func NewMiniresolverClient(serverAddr string, clientMap map[string]string, clien
 		serverOpts:      []grpc.ServerOption{},
 		logger:          logger,
 	}
-	res.SetDialOpts(grpc.WithUnaryInterceptor(res.unaryClientInterceptor))
-	res.SetDialOpts(grpc.WithStreamInterceptor(res.streamClientInterceptor))
+	res.SetServerOpts(grpc.ChainUnaryInterceptor(res.unaryServerInterceptor), grpc.ChainStreamInterceptor(res.streamServerInterceptor))
+	res.SetDialOpts(grpc.WithUnaryInterceptor(res.unaryClientInterceptor), grpc.WithStreamInterceptor(res.streamClientInterceptor))
 	if serverAddr != "" {
-		res.MiniResolverClient, res.conn, err = newClient[pb.MiniResolverClient](pb.NewMiniResolverClient, serverAddr, clientTLSConfig, dialOpts...)
+		res.MiniResolverClient, res.conn, err = newClient[pb.MiniResolverClient](pb.NewMiniResolverClient, serverAddr, clientTLSConfig, res.dialOpts...)
 		if err != nil {
 			return nil, errors.Wrapf(err, "cannot create client for %s", serverAddr)
 		}
@@ -116,6 +118,27 @@ func (c *MiniResolver) streamClientInterceptor(ctx context.Context, desc *grpc.S
 	return clientStream, nil
 }
 
+var domainRegexp = regexp.MustCompile(`^([a-zA-Z0-9-]+)\.([a-zA-Z0-9-]+)\.([a-zA-Z0-9-]+)`)
+
+func (c *MiniResolver) streamServerInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return handler(srv, ss)
+}
+
+func (c *MiniResolver) unaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+	meta, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		authority := meta.Get(":authority")
+		if len(authority) > 0 {
+			matches := domainRegexp.FindStringSubmatch(authority[0])
+			if len(matches) == 4 {
+				meta.Set("domain", matches[1])
+				ctx = metadata.NewIncomingContext(ctx, meta)
+			}
+		}
+	}
+	return handler(ctx, req)
+}
+
 func (c *MiniResolver) unaryClientInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	start := time.Now()
 	err := invoker(ctx, method, req, reply, cc, opts...)
@@ -132,9 +155,26 @@ func (c *MiniResolver) unaryClientInterceptor(ctx context.Context, method string
 	return nil
 }
 
-func NewClient[V any](c *MiniResolver, newClientFunc func(conn grpc.ClientConnInterface) V, serviceName string) (V, error) {
+func NewClients[V any](c *MiniResolver, newClientFunc func(conn grpc.ClientConnInterface) V, serviceName string, domains []string) (map[string]V, error) {
+	var result = map[string]V{}
+	for _, domain := range domains {
+		client, err := NewClient[V](c, newClientFunc, serviceName, domain)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cannot create client for %s.%s", domain, serviceName)
+		}
+		result[domain] = client
+	}
+	return result, nil
+}
+
+func NewClient[V any](c *MiniResolver, newClientFunc func(conn grpc.ClientConnInterface) V, serviceName, domain string) (V, error) {
 	var n V
 	var clientAddr string
+
+	if domain != "" {
+		serviceName = domain + "." + serviceName
+	}
+
 	if _, ok := c.clientMap[serviceName]; ok {
 		clientAddr = c.clientMap[serviceName]
 	} else {
