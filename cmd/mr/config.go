@@ -11,16 +11,16 @@ import (
 )
 
 type MiniResolverConfig struct {
-	LocalAddr          string             `toml:"localaddr"`
-	ProxyAddr          string             `toml:"proxyaddr"`
-	ProxyExternalAddr  string             `toml:"proxyexternaladdr"`
-	TLS                loader.Config      `toml:"tls"`
-	LogFile            string             `toml:"logfile"`
-	LogLevel           string             `toml:"loglevel"`
-	ServiceExpiration  config.Duration    `toml:"serviceExpiration"`
-	NotFoundExpiration config.Duration    `toml:"notFoundExpiration"`
-	BufferSize         int                `toml:"bufferSize"`
-	Log                stashconfig.Config `toml:"log"`
+	LocalAddr          string             `toml:"localaddr" yaml:"localaddr"`
+	ProxyAddr          string             `toml:"proxyaddr" yaml:"proxyaddr"`
+	ProxyExternalAddr  string             `toml:"proxyexternaladdr" yaml:"proxyexternaladdr"`
+	TLS                loader.Config      `toml:"tls" yaml:"tls"`
+	LogFile            string             `toml:"logfile" yaml:"logfile"`
+	LogLevel           string             `toml:"loglevel" yaml:"loglevel"`
+	ServiceExpiration  config.Duration    `toml:"serviceExpiration" yaml:"serviceExpiration"`
+	NotFoundExpiration config.Duration    `toml:"notFoundExpiration" yaml:"notFoundExpiration"`
+	BufferSize         int                `toml:"bufferSize" yaml:"bufferSize"`
+	Log                stashconfig.Config `toml:"log" yaml:"log"`
 }
 
 func LoadMiniResolverConfig(fSys fs.FS, fp string, conf *MiniResolverConfig) error {
