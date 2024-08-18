@@ -168,6 +168,15 @@ func NewClients[V any](c *MiniResolver, newClientFunc func(conn grpc.ClientConnI
 }
 
 func NewClient[V any](c *MiniResolver, newClientFunc func(conn grpc.ClientConnInterface) V, serviceName, domain string) (V, error) {
+	client, closer, err := NewClientCloser(c, newClientFunc, serviceName, domain)
+	if err != nil {
+		return client, errors.Wrapf(err, "cannot create client for %s.%s", domain, serviceName)
+	}
+	c.clientCloser = append(c.clientCloser, closer)
+	return client, nil
+}
+
+func NewClientCloser[V any](c *MiniResolver, newClientFunc func(conn grpc.ClientConnInterface) V, serviceName, domain string) (V, io.Closer, error) {
 	var n V
 	var clientAddr string
 
@@ -187,14 +196,13 @@ func NewClient[V any](c *MiniResolver, newClientFunc func(conn grpc.ClientConnIn
 		}
 	}
 	if clientAddr == "" {
-		return n, errors.Errorf("cannot find client address for %s", serviceName)
+		return n, nil, errors.Errorf("cannot find client address for %s", serviceName)
 	}
 	client, conn, err := newClient[V](newClientFunc, clientAddr, c.clientTLSConfig, c.dialOpts...)
 	if err != nil {
-		return n, errors.Wrapf(err, "cannot create client for %s", clientAddr)
+		return n, nil, errors.Wrapf(err, "cannot create client for %s", clientAddr)
 	}
-	c.clientCloser = append(c.clientCloser, conn)
-	return client, nil
+	return client, conn, nil
 }
 
 func (c *MiniResolver) Close() error {
