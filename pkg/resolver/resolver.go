@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"io"
 	"os"
@@ -67,7 +66,7 @@ func NewMiniresolverClient(serverAddr string, clientMap map[string]string, clien
 		serverOpts:      []grpc.ServerOption{},
 		logger:          logger,
 	}
-	res.SetServerOpts(grpc.ChainUnaryInterceptor(res.unaryServerInterceptor), grpc.ChainStreamInterceptor(res.streamServerInterceptor))
+	//res.SetServerOpts(grpc.ChainUnaryInterceptor(res.unaryServerInterceptor), grpc.ChainStreamInterceptor(res.streamServerInterceptor))
 	res.SetDialOpts(grpc.WithUnaryInterceptor(res.unaryClientInterceptor), grpc.WithStreamInterceptor(res.streamClientInterceptor))
 	if serverAddr != "" {
 		res.MiniResolverClient, res.conn, err = newClient[pb.MiniResolverClient](pb.NewMiniResolverClient, serverAddr, clientTLSConfig, res.dialOpts...)
@@ -119,25 +118,6 @@ func (c *MiniResolver) streamClientInterceptor(ctx context.Context, desc *grpc.S
 }
 
 var domainRegexp = regexp.MustCompile(`^([a-zA-Z0-9-]+)\.([a-zA-Z0-9-]+)\.([a-zA-Z0-9-]+)`)
-
-func (c *MiniResolver) streamServerInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	return handler(srv, ss)
-}
-
-func (c *MiniResolver) unaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-	meta, ok := metadata.FromIncomingContext(ctx)
-	if ok {
-		authority := meta.Get(":authority")
-		if len(authority) > 0 {
-			matches := domainRegexp.FindStringSubmatch(authority[0])
-			if len(matches) == 4 {
-				meta.Set("domain", matches[1])
-				ctx = metadata.NewIncomingContext(ctx, meta)
-			}
-		}
-	}
-	return handler(ctx, req)
-}
 
 func (c *MiniResolver) unaryClientInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	start := time.Now()
