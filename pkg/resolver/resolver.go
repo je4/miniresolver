@@ -146,7 +146,10 @@ func (c *MiniResolver) getUnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		if !ok {
 			md = metadata.New(nil)
 		}
-		md.Set("domain", domain)
+		d := md.Get("domain")
+		if len(d) == 0 {
+			md.Set("domain", domain)
+		}
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		end := time.Now()
