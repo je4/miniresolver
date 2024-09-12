@@ -117,7 +117,10 @@ func (c *MiniResolver) getStreamClientInterceptor() grpc.StreamClientInterceptor
 		if !ok {
 			md = metadata.New(nil)
 		}
-		md.Set("domain", domain)
+		d := md.Get("domain")
+		if len(d) == 0 {
+			md.Set("domain", domain)
+		}
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		start := time.Now()
 		clientStream, err := streamer(ctx, desc, cc, method, opts...)
@@ -129,7 +132,7 @@ func (c *MiniResolver) getStreamClientInterceptor() grpc.StreamClientInterceptor
 					c.RefreshResolver(cc.Target())
 				}
 			}
-			return nil, errors.Wrapf(err, "RPC: %s", method)
+			return nil, errors.Wrapf(err, "RPC: [%v]%s", md.Get("domain"), method)
 		}
 		return clientStream, nil
 	}
@@ -160,7 +163,7 @@ func (c *MiniResolver) getUnaryClientInterceptor() grpc.UnaryClientInterceptor {
 					c.RefreshResolver(cc.Target())
 				}
 			}
-			return errors.Wrapf(err, "RPC: %s", method)
+			return errors.Wrapf(err, "RPC: [%v]%s", md.Get("domain"), method)
 		}
 		return nil
 	}
