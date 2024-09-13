@@ -110,7 +110,8 @@ var domainRegexp = regexp.MustCompile(`^miniresolver:([a-zA-Z0-9-]+)\.([a-zA-Z0-
 func (c *MiniResolver) getStreamClientInterceptor() grpc.StreamClientInterceptor {
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 		var domain string
-		if matches := domainRegexp.FindStringSubmatch(cc.Target()); matches != nil {
+		target := cc.Target()
+		if matches := domainRegexp.FindStringSubmatch(target); matches != nil {
 			domain = matches[1]
 		}
 		md, ok := metadata.FromOutgoingContext(ctx)
@@ -120,19 +121,21 @@ func (c *MiniResolver) getStreamClientInterceptor() grpc.StreamClientInterceptor
 		d := md.Get("domain")
 		if len(d) == 0 {
 			md.Set("domain", domain)
+		} else {
+			domain = d[0]
 		}
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		start := time.Now()
 		clientStream, err := streamer(ctx, desc, cc, method, opts...)
 		end := time.Now()
-		c.logger.Debug().Msgf("RPC Stream: %s, duration: %s, err: %v", method, end.Sub(start).String(), err)
+		c.logger.Debug().Str("domain", domain).Str("target", target).Str("method", method).Dur("duration", end.Sub(start)).Err(err)
 		if err != nil {
 			if stat, ok := status.FromError(err); ok {
 				if stat.Code() == codes.Unavailable {
 					c.RefreshResolver(cc.Target())
 				}
 			}
-			return nil, errors.Wrapf(err, "RPC: [%v]%s", md.Get("domain"), method)
+			return nil, errors.Wrapf(err, "RPC: %s %s :: %s", target, method, domain)
 		}
 		return clientStream, nil
 	}
@@ -142,7 +145,8 @@ func (c *MiniResolver) getUnaryClientInterceptor() grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		start := time.Now()
 		var domain string
-		if matches := domainRegexp.FindStringSubmatch(cc.Target()); matches != nil {
+		var target = cc.Target()
+		if matches := domainRegexp.FindStringSubmatch(target); matches != nil {
 			domain = matches[1]
 		}
 		md, ok := metadata.FromOutgoingContext(ctx)
@@ -152,18 +156,20 @@ func (c *MiniResolver) getUnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		d := md.Get("domain")
 		if len(d) == 0 {
 			md.Set("domain", domain)
+		} else {
+			domain = d[0]
 		}
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		end := time.Now()
-		c.logger.Debug().Str("domain", domain).Str("method", method).Dur("duration", end.Sub(start)).Err(err)
+		c.logger.Debug().Str("domain", domain).Str("target", target).Str("method", method).Dur("duration", end.Sub(start)).Err(err)
 		if err != nil {
 			if status, ok := status.FromError(err); ok {
 				if status.Code() == codes.Unavailable {
-					c.RefreshResolver(cc.Target())
+					c.RefreshResolver(target)
 				}
 			}
-			return errors.Wrapf(err, "RPC: [%v]%s", md.Get("domain"), method)
+			return errors.Wrapf(err, "RPC: %s/%s :: %s", target, method, domain)
 		}
 		return nil
 	}

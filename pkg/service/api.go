@@ -36,6 +36,24 @@ type miniResolver struct {
 	proxyServer       *http.Server
 }
 
+/*
+	func (c *databaseClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error) {
+		out := new(proto.DefaultResponse)
+		err := c.cc.Invoke(ctx, Database_Ping_FullMethodName, in, out, opts...)
+		if err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
+*/
+func (d *miniResolver) Start() {
+	go func() {
+		for name, srv := range d.services.services {
+
+		}
+	}()
+}
+
 func (d *miniResolver) StartProxy() error {
 	handler := goproxy.NewProxyHttpServer()
 	d.proxyServer = &http.Server{
