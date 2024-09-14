@@ -46,12 +46,9 @@ type miniResolver struct {
 		return out, nil
 	}
 */
-func (d *miniResolver) Start() {
-	go func() {
-		for name, srv := range d.services.services {
 
-		}
-	}()
+func (d *miniResolver) Close() {
+	d.services.Close()
 }
 
 func (d *miniResolver) StartProxy() error {
@@ -229,8 +226,8 @@ func (d *miniResolver) RemoveService(ctx context.Context, data *pb.ServiceData) 
 }
 
 func (d *miniResolver) ResolveServices(ctx context.Context, data *wrapperspb.StringValue) (*pb.ServicesResponse, error) {
-	d.logger.Debug().Msgf("resolve services '%s'", data.Value)
 	addrs, ncw := d.services.getServices(data.Value)
+	d.logger.Debug().Msgf("resolve services '%s': %d found", data.Value, len(addrs))
 	return &pb.ServicesResponse{
 		Addrs:        addrs,
 		NextCallWait: int64(ncw.Seconds()),
@@ -238,8 +235,8 @@ func (d *miniResolver) ResolveServices(ctx context.Context, data *wrapperspb.Str
 }
 
 func (d *miniResolver) ResolveService(ctx context.Context, data *wrapperspb.StringValue) (*pb.ServiceResponse, error) {
-	d.logger.Debug().Msgf("resolve service '%s'", data.Value)
 	addr, ncw := d.services.getService(data.Value)
+	d.logger.Debug().Msgf("resolve service '%s' - %s", data.Value, addr)
 	if addr == "" {
 		return nil, fmt.Errorf("service '%s' not found", data.Value)
 	}

@@ -79,6 +79,7 @@ func main() {
 	var logger zLogger.ZLogger = &l2
 
 	srv := service.NewMiniResolver(conf.BufferSize, time.Duration(conf.ServiceExpiration), conf.ProxyAddr, logger)
+	defer srv.Close()
 
 	tlsConfig, l, err := loader.CreateServerLoader(true, &conf.TLS, nil, logger)
 	if err != nil {
