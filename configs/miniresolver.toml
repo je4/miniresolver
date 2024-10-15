@@ -6,7 +6,7 @@ type = "minivault"
 initialtimeout = "1h"
 [tls.minivault]
 baseurl = "https://localhost:8759/api/v1"
-parenttoken = "pa.2dc2a69fa781e6cf.c89679768a0c16f5"
+parenttoken = "pa.2dd468f94b60ebbf.22abcb06985f696f"
 tokentype = "server_cert"
 tokenpolicies = ["miniresolver"]
 tokeninterval = "1h"
